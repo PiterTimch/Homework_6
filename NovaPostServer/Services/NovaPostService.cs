@@ -12,6 +12,8 @@ using System.Threading.Tasks;
 using NovaPostServer.Data;
 using Microsoft.EntityFrameworkCore;
 using NovaPostServer.Constants;
+using AutoMapper;
+using NovaPostServer.Mapping;
 
 namespace NovaPostServer.Services
 {
@@ -23,6 +25,13 @@ namespace NovaPostServer.Services
             _url = "https://api.novaposhta.ua/v2.0/json/";
             _context = new NovaPostDbContext();
             _context.Database.Migrate();
+
+            var config = new MapperConfiguration(cfg =>
+            {
+                cfg.AddProfile<MappingProfile>();
+            });
+
+            _mapper = config.CreateMapper();
         }
 
         public async Task SeedAreasAsync()
@@ -39,17 +48,12 @@ namespace NovaPostServer.Services
                 if (result?.Data != null && result.Success)
                 {
                     using var semaphore = new SemaphoreSlim(10);
-                    await Parallel.ForEachAsync(result.Data, async (item, _) =>
+                    await Parallel.ForEachAsync(result.Data, async (item, x) =>
                     {
                         await semaphore.WaitAsync();
                         try
                         {
-                            var entity = new AreaEntity
-                            {
-                                Ref = item.Ref,
-                                AreasCenter = item.AreasCenter,
-                                Description = item.Description,
-                            };
+                            var entity = _mapper.Map<AreaEntity>(item);
 
                             using var localContext = new NovaPostDbContext();
                             await localContext.Areas.AddAsync(entity);
@@ -71,7 +75,7 @@ namespace NovaPostServer.Services
                 var listAreas = _context.Areas.ToList();
 
                 using var semaphore = new SemaphoreSlim(10);
-                await Parallel.ForEachAsync(listAreas, async (area, _) =>
+                await Parallel.ForEachAsync(listAreas, async (area, x) =>
                 {
                     await semaphore.WaitAsync();
                     try
@@ -87,16 +91,21 @@ namespace NovaPostServer.Services
                         var result = await SendRequestAsync<CityResponse>(modelRequest);
                         if (result?.Data != null && result.Success)
                         {
-                            using var localContext = new NovaPostDbContext();
-                            var cityEntities = result.Data.Select(city => new CityEntity
+                            var cityEntities = result.Data.Select(city =>
                             {
-                                Ref = city.Ref,
-                                Description = city.Description,
-                                TypeDescription = city.SettlementTypeDescription,
-                                AreaRef = city.Area,
-                                AreaId = area.Id
+                                //var entity = _mapper.Map<CityEntity>(city);
+                                var entity = new CityEntity
+                                {
+                                    Ref = city.Ref,
+                                    Description = city.Description,
+                                    TypeDescription = city.SettlementTypeDescription,
+                                    AreaRef = city.Area,
+                                    AreaId = area.Id
+                                };
+                                return entity;
                             });
 
+                            using var localContext = new NovaPostDbContext();
                             await localContext.Cities.AddRangeAsync(cityEntities);
                             await localContext.SaveChangesAsync();
                         }
@@ -132,17 +141,14 @@ namespace NovaPostServer.Services
                         var result = await SendRequestAsync<DepartmentResponse>(modelRequest);
                         if (result?.Data != null && result.Success)
                         {
-                            using var localContext = new NovaPostDbContext();
-                            var departmentEntities = result.Data.Select(dep => new DepartmentEntity
+                            var departmentEntities = result.Data.Select(dep =>
                             {
-                                Ref = dep.Ref,
-                                Description = dep.Description,
-                                Address = dep.ShortAddress,
-                                Phone = dep.Phone,
-                                CityRef = dep.CityRef,
-                                CityId = city.Id
+                                var entity = _mapper.Map<DepartmentEntity>(dep);
+                                entity.CityId = city.Id;
+                                return entity;
                             });
 
+                            using var localContext = new NovaPostDbContext();
                             await localContext.Departments.AddRangeAsync(departmentEntities);
                             await localContext.SaveChangesAsync();
                         }
@@ -178,5 +184,6 @@ namespace NovaPostServer.Services
         private readonly HttpClient _httpClient;
         private readonly string _url;
         private readonly NovaPostDbContext _context;
+        private readonly IMapper _mapper;
     }
 }

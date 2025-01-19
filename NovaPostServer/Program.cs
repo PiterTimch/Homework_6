@@ -18,7 +18,7 @@ namespace NovaPostServer
             await novaPoshtaService.SeedAreasAsync();
             await novaPoshtaService.SeedCitiesAsync();
             await novaPoshtaService.SeedDepartmentsAsync();
-            
+
             stopWatch.Stop();
             TimeSpan ts = stopWatch.Elapsed;
 
