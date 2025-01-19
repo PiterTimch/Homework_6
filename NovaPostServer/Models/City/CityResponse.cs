@@ -6,17 +6,9 @@ using System.Threading.Tasks;
 
 namespace NovaPostServer.Models.City
 {
-    public class CityResponse
+    public class CityResponse : StandartResponse<CityItemResponse>
     {
-        public bool Success { get; set; }
-        public List<CityItemResponse>? Data { get; set; }
-        public List<object>? Errors { get; set; }
-        public List<object>? Warnings { get; set; }
         public Info? Info { get; set; }
-        public List<object>? MessageCodes { get; set; }
-        public List<object>? ErrorCodes { get; set; }
-        public List<object>? WarningCodes { get; set; }
-        public List<object>? InfoCodes { get; set; }
     }
     public class Info
     {
