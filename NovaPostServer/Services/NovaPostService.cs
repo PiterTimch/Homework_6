@@ -32,6 +32,8 @@ namespace NovaPostServer.Services
             });
 
             _mapper = config.CreateMapper();
+
+            _procesLimit = 10;
         }
 
         public async Task SeedAreasAsync()
@@ -47,7 +49,9 @@ namespace NovaPostServer.Services
                 var result = await SendRequestAsync<AreaResponse>(modelRequest);
                 if (result?.Data != null && result.Success)
                 {
-                    using var semaphore = new SemaphoreSlim(10);
+                    Console.WriteLine("Seed Areas...");
+
+                    using var semaphore = new SemaphoreSlim(_procesLimit);
                     await Parallel.ForEachAsync(result.Data, async (item, x) =>
                     {
                         await semaphore.WaitAsync();
@@ -74,7 +78,7 @@ namespace NovaPostServer.Services
             {
                 var listAreas = _context.Areas.ToList();
 
-                using var semaphore = new SemaphoreSlim(10);
+                using var semaphore = new SemaphoreSlim(_procesLimit);
                 await Parallel.ForEachAsync(listAreas, async (area, x) =>
                 {
                     await semaphore.WaitAsync();
@@ -93,15 +97,8 @@ namespace NovaPostServer.Services
                         {
                             var cityEntities = result.Data.Select(city =>
                             {
-                                //var entity = _mapper.Map<CityEntity>(city);
-                                var entity = new CityEntity
-                                {
-                                    Ref = city.Ref,
-                                    Description = city.Description,
-                                    TypeDescription = city.SettlementTypeDescription,
-                                    AreaRef = city.Area,
-                                    AreaId = area.Id
-                                };
+                                var entity = _mapper.Map<CityEntity>(city);
+                                entity.AreaId = area.Id;
                                 return entity;
                             });
 
@@ -124,7 +121,7 @@ namespace NovaPostServer.Services
             {
                 var listCities = _context.Cities.ToList();
 
-                using var semaphore = new SemaphoreSlim(10);
+                using var semaphore = new SemaphoreSlim(_procesLimit);
                 await Parallel.ForEachAsync(listCities, async (city, _) =>
                 {
                     await semaphore.WaitAsync();
@@ -185,5 +182,6 @@ namespace NovaPostServer.Services
         private readonly string _url;
         private readonly NovaPostDbContext _context;
         private readonly IMapper _mapper;
+        private readonly int _procesLimit;
     }
 }

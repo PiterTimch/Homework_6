@@ -13,8 +13,10 @@ namespace NovaPostServer
             NovaPostService novaPoshtaService = new NovaPostService();
             
             Stopwatch stopWatch = new Stopwatch();
-            
             stopWatch.Start();
+
+            Console.WriteLine("Start");
+
             await novaPoshtaService.SeedAreasAsync();
             await novaPoshtaService.SeedCitiesAsync();
             await novaPoshtaService.SeedDepartmentsAsync();
